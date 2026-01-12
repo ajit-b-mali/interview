@@ -556,128 +556,577 @@ myCounter(); // Output: Current count: 3
 
 ---
 
-## What is the event loop?
+## 24. What is the event loop?
 
-The event loop is the mechanism that lets JavaScript handle asynchronous tasks in a single thread.
+The Event Loop is a mechanism in JavaScript that handles asynchronous operations. It constantly monitors the Call Stack (where code runs) and the Callback Queue (where waiting tasks sit). If the Call Stack is empty, the Event Loop takes the first task from the Queue and pushes it onto the Stack to be executed.
 
-- Call stack runs synchronous code.
-- Web APIs/Node APIs handle timers, fetch, etc.
-- Task queues (macro/micro) hold callbacks.
-- The event loop moves ready callbacks from queues to the stack when it is empty.
+### Explanation of Event Loop
+
+Think of a Busy Restaurant with only One Chef (JavaScript Engine).
+
+1. The Chef (Call Stack): Can only cook one dish at a time.
+2. The Orders (Code): Most orders are quick (chopping onions = console.log). The Chef does these immediately.
+3. The Special Orders (Asynchronous tasks): Some orders take a long time, like baking a cake (Downloading a file).
+    - Instead of standing there staring at the oven for 30 minutes, the Chef puts the cake in the oven (Web API) and moves on to the next customer's order immediately.
+4. The Bell (Callback Queue): When the cake is done, the oven "dings" and puts the cake on the counter.
+5. The Waiter (Event Loop): The waiter's only job is to watch the Chef.
+    - Rule: The Waiter cannot interrupt the Chef.
+    - If the Chef is busy cooking, the cake waits on the counter.
+    - The moment the Chef is free (Stack is empty), the Waiter hands them the cake to finish plating (executes the callback).
+
+<details>
+<summary>Terminologies:</details>
+
+- Single-Threaded: JavaScript can literally only do one thing at a specific micro-second. It doesn't have multiple brains.
+- Call Stack: The place where the code is actually running right now. It follows "Last In, First Out." If this is not empty, nothing else can happen.
+- Web APIs: Tools provided by the Browser (not JavaScript itself) to handle heavy lifting like timers (setTimeout), HTTP requests (fetch), or DOM events. They run in the background.
+- Callback Queue (Task Queue): A waiting line for functions (callbacks) that are ready to run but are waiting for the Call Stack to be free.
+- Microtask Queue: A "VIP Line" for Promises. Tasks here get processed before the standard Callback Queue.
+
+```JavaScript
+console.log("1. Start");
+
+// This goes to Web API -> Queue -> Waits for Stack to clear
+setTimeout(() => {
+    console.log("2. Timeout (0 seconds)");
+}, 0);
+
+// This goes to Microtask Queue (VIP) -> Runs before Timeout
+Promise.resolve().then(() => {
+    console.log("3. Promise");
+});
+
+console.log("4. End");
+
+/* OUTPUT ORDER:
+1. Start
+4. End
+3. Promise  (VIP Queue runs first)
+2. Timeout (0 seconds) (Standard Queue runs last)
+*/
+```
+
+### Use Cases of Event loop
+
+- Non-blocking I/O: The server can handle thousands of requests (like a chat app) without freezing, because it doesn't wait for one message to send before receiving the next.
+- Smooth UI: Allows the browser to re-render animations and respond to clicks even while waiting for data from a server.
+- Delayed Execution: Scheduling tasks to run slightly later to prioritize critical UI updates first.
 
 ---
 
-## Explain fetch API
+## 25. Explain fetch API
 
-`fetch()` makes HTTP requests and returns a promise.
+The Fetch API is a modern interface in JavaScript used to make HTTP requests to servers (like requesting data or sending a form). It is built into the browser and uses Promises to handle results, providing a more powerful and flexible feature set than the older XMLHttpRequest.
+
+### Explaination of fetch API
+
+Think of Fetch as a Messenger Dog.
+
+1. The Command: You tell the dog, "Go to this address (URL) and get me the newspaper."
+2. The Journey (Async): The dog runs off. You don't freeze; you keep drinking your coffee.
+3. The Return (Promise Resolves): The dog comes back.
+    - Important: The dog comes back with a "package" (The Response Object). You can't read the news yet because it's wrapped up.
+4. Unwrapping (Response.json()): You have to perform a second step: unwrap the package to actually read the text inside.
+
+<details>
+<summary>Terminologies:</summary>
+
+- Endpoint: The specific URL you are sending the Fetch messenger to (e.g., <https://api.google.com/users>).
+- Method (GET, POST, etc.): The type of action you want to do.
+  - GET: "Go get this data." (Default)
+  - POST: "Go give this data to the server" (like submitting a login form).
+- Headers: Extra information stamped on the envelope. Examples: "This is JSON data" or "Here is my security pass (token)."
+- Body: The actual content inside the envelope (only used when sending data, like in a POST request).
+- Stream: The way Fetch receives data. It doesn't download the whole file at once; it opens a "flow" of data. This is why you need to call .json() or .text() to read it completely.
+
+</details>
 
 ```js
-fetch('https://api.example.com/items')
-  .then(res => res.json())
-  .then(data => console.log(data))
-  .catch(err => console.error(err));
+// GET
+fetch('https://api.example.com/data') // 1. Go to URL
+  .then(response => {
+     // 2. Check if the server answered "OK"
+     if (!response.ok) {
+       throw new Error('Network response was not ok');
+     }
+     // 3. Unwrap the package (convert stream to JSON)
+     return response.json(); 
+  })
+  .then(data => {
+     // 4. Use the data
+     console.log(data); 
+  })
+  .catch(error => {
+     console.error('There was a problem:', error);
+  });
+
+
+// POST
+fetch('https://api.example.com/login', {
+  method: 'POST', // We are sending data
+  headers: {
+    'Content-Type': 'application/json' // Tell server we are sending JSON
+  },
+  body: JSON.stringify({ username: 'John', password: '123' }) // The data
+})
+.then(response => response.json())
+.then(data => console.log('Login Success:', data));
 ```
 
-With async/await:
+---
 
-```js
-async function load() {
-  const res = await fetch('/data.json');
-  if (!res.ok) throw new Error('Request failed');
-  const data = await res.json();
-  console.log(data);
+## 26. What is JSON? and how to used?
+
+JSON (JavaScript Object Notation) is a lightweight, text-based data format used to store and transport data. It is language-independent, meaning while it looks like JavaScript objects, it can be read and written by almost any programming language (Python, Java, C++, etc.).
+
+### Explaination of JSON
+
+Think of JSON as the "English Language" of the Internet.
+
+- If a French person (Python) wants to talk to a German person (Java), they might struggle.
+- But if they both agree to write their message in English (JSON), they can understand each other perfectly.
+
+In the tech world:
+
+- Your browser (Frontend) speaks JavaScript.
+- The database (Backend) might speak Python or PHP.
+- To send user data from the browser to the server, we wrap it in a JSON "envelope." The server opens it, reads it, and understands it.
+
+<details>
+<summary>Terminologies:</summary>
+
+- Serialization (Stringify): Converting a "live" object (which lives in computer memory) into a simple text string so it can be sent over a wire (the internet).
+- Deserialization (Parsing): Converting that text string back into a live, usable object in code.
+- Key-Value Pair: The structure of data. Key is the label, Value is the content.
+  - Example: "name": "Alice" (Label is Name, Content is Alice).
+
+</details>
+
+1. The Syntax (Rules):
+    - Keys must be in double quotes " ".
+    - No trailing commas allowed.
+    - Functions are not allowed inside JSON.
+
+```JSON
+{
+  "name": "John Doe",
+  "age": 25,
+  "isStudent": true,
+  "skills": ["JavaScript", "React"]
 }
 ```
 
----
+```JavaScript
+// A. Sending Data (Object -> String)
+const userObject = { name: "John", age: 30 };
+const jsonString = JSON.stringify(userObject);
+console.log(jsonString); 
+// Output: '{"name":"John","age":30}' -> This is now just text!
 
-## What is JSON? and how to used?
+// B. Receiving Data (String -> Object)
+const serverResponse = '{"name":"John","age":30}';
+const parsedObject = JSON.parse(serverResponse);
+console.log(parsedObject.name); 
+// Output: John -> This is now a usable variable!
+```
 
-JSON (JavaScript Object Notation) is a lightweight text format for data exchange.
+### Use Case of JSON
 
-- Looks like JS objects but is just a string.
-- Use `JSON.stringify(obj)` to convert an object to JSON string.
-- Use `JSON.parse(str)` to convert a JSON string to an object.
+- API Communication: The most common use. REST APIs usually send responses in JSON format.
+- Configuration Files: Storing settings for an app (e.g., package.json in Node.js or settings.json in VS Code).
+- Local Storage: Saving simple user data (like "Dark Mode: On") in the user's browser storage.
 
----
+### JSON vs XML
 
-## fetch() vs axios?
-
-- Built-in vs library: `fetch` is native; Axios is an external library.
-- Defaults: `fetch` only rejects on network errors; need to check `res.ok`. Axios rejects on non-2xx automatically.
-- Data handling: `fetch` requires `res.json()`; Axios already parses JSON.
-- Older browser support: Axios works with more legacy browsers; `fetch` may need a polyfill.
-- Extras: Axios has interceptors, request cancellation, progress events; `fetch` is simpler.
-
----
-
-## What is localStorage vs sessionStorage vs cookies?
-
-- localStorage: Key-value strings, ~5-10MB, persists until cleared, same-origin.
-- sessionStorage: Same as localStorage but cleared when tab closes.
-- Cookies: Small (~4KB), sent to server on each request, can set expiry and flags (HttpOnly, Secure, SameSite).
-
-Use local/sessionStorage for client-only data; use cookies for server communication and auth tokens (with security flags).
-
----
-
-## What is DOM?
-
-Document Object Model: A tree representation of the HTML page. JavaScript can read and change it to update the UI.
+| Feature | JSON | XML (The Old Standard) |
+| :--- | :--- | :--- |
+| **Readability** | **Advantage:** Very clean and easy for humans to read. | **Disadvantage:** Verbose (lots of `<tags>` everywhere). |
+| **Size** | **Advantage:** Lightweight. Uses less bandwidth because it doesn't need closing tags. | **Disadvantage:** Heavy. The same data takes up more space. |
+| **Parsing Speed** | **Advantage:** Extremely fast for browsers to parse (since it is native to JS). | **Disadvantage:** Slower and requires a complex parser. |
+| **Data Types** | **Disadvantage:** Limited types. Cannot store Functions, Dates, or undefined. | **Advantage:** Can store more complex schema definitions. |
 
 ---
 
-## What is getElementById() vs querySelector()?
+## 27. fetch() vs axios?
 
-- `getElementById('id')`: Returns the single element with that id; fast, id-only.
-- `querySelector('css')`: Returns the first element matching a CSS selector; flexible (classes, attributes, nesting).
+- Fetch: The native, built-in JavaScript API for making HTTP requests. It uses Promises and comes pre-installed in all modern browsers.
+
+- Axios: A popular third-party JavaScript library (package) for making HTTP requests. It is built on top of the generic XMLHttpRequest interface but wraps it in Promises and adds powerful features.
+
+### Explanation of Difference
+
+Think of making an HTTP request like Cooking a Meal.
+
+- Fetch (The Manual Kit): You get the raw ingredients.
+  - You have to chop the vegetables yourself (Convert to JSON manually).
+  - You have to check if the food is rotten yourself (Manual error handling).
+  - It’s free and already in your kitchen (Built-in).
+
+- Axios (The Meal Kit Delivery): You pay for a service (Need to install a library).
+  - The ingredients come pre-chopped (Automatic JSON conversion).
+  - If the food is bad, they don't even deliver it; they call you immediately to apologize (Automatic error handling).
+  - It comes with extra sauces and tools (Interceptors, timeout settings).
+
+<details>
+<summary>Terminologies:</summary>
+
+- Boilerplate Code: Code that you have to write over and over again with no major changes. Fetch requires more boilerplate (like response.json()).
+- Interceptors: A feature in Axios that lets you "intercept" a request or response before it reaches your code. Like a security guard checking every package leaving or entering the building (useful for adding Authentication Tokens automatically).
+- Backward Compatibility: The ability to work on old browsers. Fetch doesn't work on very old Internet Explorer without a "polyfill," while Axios handles this internally.
+- Response Timeout: Setting a limit (e.g., 5 seconds). If the server doesn't answer by then, cancel the request. Axios does this easily; Fetch makes it harder (requires AbortController).
+- XSRF: Cross-Site Request Forgery protection. Axios has built-in support for this security feature, while Fetch requires manual handling.
+
+</details>
+
+```JavaScript
+// fetch
+fetch('https://api.example.com/user')
+  .then(response => {
+    // MANUAL STEP 1: Check for 404/500 errors
+    if (!response.ok) {
+      throw new Error('Server Error');
+    }
+    // MANUAL STEP 2: Convert to JSON
+    return response.json();
+  })
+  .then(data => console.log(data))
+  .catch(error => console.log('Error:', error));
+
+// axios
+// Automatic JSON conversion & Error handling
+axios.get('https://api.example.com/user')
+  .then(response => {
+    // Data is already inside response.data
+    console.log(response.data); 
+  })
+  .catch(error => {
+    // Automatically runs this if status is 404/500
+    console.log('Error:', error); 
+  });
+```
+
+### Use Cases of fetch and axios
+
+- Use Fetch when:
+  - You are building a small project or a simple website.
+  - You don't want to increase your app's file size by downloading extra libraries.
+  - You only have a few simple API calls.
+
+- Use Axios when:
+  - You are building a large, complex application (Enterprise level).
+  - You need Interceptors (e.g., to attach a login token to every single request automatically).
+  - You need to support older browsers.
+  - You want built-in protection against security threats like XSRF.
+
+### fetch vs axios
+
+| Feature | Fetch (Native) | Axios (Library) |
+| :--- | :--- | :--- |
+| **Setup** | **Advantage:** No installation. Just write code. | **Disadvantage:** Must run `npm install axios` and import it. Adds roughly 11KB to your project size. |
+| **Data Transformation** | **Disadvantage:** Two steps: 1. Get response, 2. `.json()`. | **Advantage:** One step: Data is automatically converted to JSON. |
+| **Error Handling** | **Disadvantage:** Does not throw errors for HTTP 404/500. You must manually check `response.ok`. | **Advantage:** Automatically throws an error for any bad status code (400-500). |
+| **Progress Tracking** | **Disadvantage:** Hard to track upload progress (like a % bar). | **Advantage:** Built-in "Upload Progress" feature. Great for file uploads. |
+| **Request Cancellation** | **Disadvantage:** Verbose. Requires creating an `AbortController`. | **Advantage:** Simple. Uses a "CancelToken". |
 
 ---
 
-## What is event and how to handle events in JavaScript?
+## 28. What is localStorage vs sessionStorage vs cookies?
 
-An event is an action the browser reports (click, input, load, keydown).
+- **Local Storage**: A web storage API that allows JavaScript sites to store key-value pairs in a web browser with no expiration date. Data persists even after the browser is closed and reopened.
+- **Session Storage**: A web storage API that stores data for one session only. The data is deleted when the browser tab is closed.
+- **Cookies**: Small pieces of data (text files) sent from a website and stored on the user's computer while the user is browsing. Unlike storage APIs, cookies are sent to the server with every HTTP request.
 
-Handle with listeners:
+### Explanation of storages
+
+Imagine you are visiting a hotel (The Website).
+
+- Local Storage (The Safe): You put your passport in the room safe. You leave the hotel, come back next year, and it is still there. It stays until you deliberately remove it.
+- Session Storage (The Whiteboard): You write a note on the room's whiteboard. It stays there while you are in the room. But the moment you check out (close the tab), the cleaning crew wipes it completely clean.
+- Cookies ( The ID Badge): The hotel gives you a sticky badge to wear on your shirt. Every time you go to the restaurant or the pool (make a request to the server), the staff looks at your badge to know who you are.
+
+<details>
+<summary>Terminologies:</summary>
+
+- Persistence: How long the data stays alive. (Local = Forever, Session = Until tab close, Cookie = Until expiration date set by code).
+- HttpOnly: A security flag for Cookies. If a cookie is "HttpOnly," JavaScript cannot read it. This prevents hackers from stealing your login info using malicious scripts (XSS attacks). Storage APIs do not have this feature.
+- Capacity (Quota): How much data you can store. Storage APIs are big (Standard rooms), Cookies are tiny (A small pocket).
+- Server-Side Access: Whether the server (backend) can see the data. The server automatically sees Cookies. It cannot see Local/Session storage unless you manually send that data to it.
+
+</details>
 
 ```js
-const btn = document.getElementById('save');
-btn.addEventListener('click', event => {
-  event.preventDefault();
-  console.log('Clicked');
+// LocalStorage and Session Storage Same syntax
+// A. SAVE Data
+localStorage.setItem('username', 'JohnDoe');
+sessionStorage.setItem('isLoggedIn', 'true');
+
+// B. GET Data
+const user = localStorage.getItem('username'); // Returns "JohnDoe"
+
+// C. REMOVE Data
+localStorage.removeItem('username'); // Delete specific item
+sessionStorage.clear(); // Delete everything
+
+// Cookies
+// Setting a cookie (Name=Value; Expiration)
+document.cookie = "username=JohnDoe; expires=Fri, 31 Dec 9999 23:59:59 GMT; path=/";
+
+// Reading cookies (Returns one long string you have to split manually)
+console.log(document.cookie); 
+// Output: "username=JohnDoe; theme=dark"
+```
+
+### Use Cases of storages
+
+- Local Storage:
+  - Storing "Dark Mode" preferences (so the site remembers next time you visit).
+  - Saving a draft of a long form/blog post so you don't lose it if the internet dies.
+  - Storing a "Shopping Cart" for non-logged-in users.
+
+- Session Storage:
+  - Sensitive data for a specific transaction (e.g., banking portal details that should vanish if the user closes the tab).
+  - Single-page application state (filtering a list just for this visit).
+
+- Cookies:
+  - Authentication Tokens: Identifying if a user is logged in (The s server reads this to allow access).
+  - Tracking: Google Analytics or Facebook Ads tracking user behavior across pages.
+
+### difference between storages
+
+Feature,Local Storage,Session Storage,Cookies
+Capacity,Advantage: Large (~5MB - 10MB).,Advantage: Large (~5MB).,Disadvantage: Tiny (Only 4KB).
+Expiration,Advantage: Never expires (unless manually deleted).,Neutral: Expires when Tab/Window closes.,Neutral: Manually set expiration date.
+Server Access,Disadvantage: Data stays on Client. Server can't see it easily.,Disadvantage: Data stays on Client.,Advantage: Sent to server with every request automatically.
+Security,Disadvantage: Vulnerable to XSS attacks (Scripts can read it).,Disadvantage: Vulnerable to XSS.,Advantage: Safer if HttpOnly flag is used (Scripts cannot read it).
+Ease of Use,"Advantage: Very easy API (setItem, getItem).",Advantage: Very easy API.,Disadvantage: Hard to parse strings manually.
+
+---
+
+## 29. What is DOM?
+
+The DOM (Document Object Model) is a programming interface for web documents. It represents the page so that programs (like JavaScript) can change the document structure, style, and content. The DOM represents the document as nodes and objects.
+
+### Explaination of DOM
+
+Think of the DOM as the Family Tree of your website.
+
+- The Window: The Great-Grandparent (The browser tab).
+- The Document: The Grandparent (The web page itself).
+- HTML: The Parent.
+- Head & Body: The Children.
+- Divs, H1s, Paragraphs: The Grandchildren.
+
+When you write HTML code, the browser reads it and builds this tree in its memory. JavaScript uses this tree to find elements (like finding a cousin in a family tree) and change them (like changing the cousin's shirt color).
+
+<details>
+<summary>Terminologies:</summary>
+
+- Node: Every single item in the DOM tree is a "Node." An HTML tag is an Element Node, text inside a tag is a Text Node, and comments are Comment Nodes.
+- Root Element: The top-most element that holds everything else (usually the `<html>` tag).
+- Traversing: Moving up and down the tree (e.g., asking "Who is the parent of this button?").
+
+</details>
+
+### What is getElementById() vs querySelector()?
+
+- getElementById()
+  - What it does: Selects a single element based strictly on its unique id attribute.
+  - Syntax: `document.getElementById("myId")` (Note: No # symbol).
+  - Return: Returns the Element object or null if not found.
+
+- querySelector()
+  - What it does: Selects the first element that matches a specific CSS Selector.
+  - Syntax: `document.querySelector("#myId")` or .myClass or div > p.
+  - Return: Returns the first matching Element or null.
+
+| Feature | getElementById() | querySelector() |
+| :--- | :--- | :--- |
+| **Scope** | Selects only by ID attribute. | Selects by any CSS selector (ID, class, tag). |
+| **Syntax** | `document.getElementById("myId")` (No `#`). | `document.querySelector("#myId")` (Needs `#`). |
+| **Performance** | Faster (optimized hash map lookup). | Slower (must parse the selector string). |
+| **Return** | Reference to the Element or `null`. | Reference to the first matching Element or `null`. |
+
+
+```html
+<div id="container">
+    <p class="text">Hello</p>
+    <p class="text">World</p>
+</div>
+```
+
+```js
+// 1. Using getElementById (Old Faithful)
+// fast and specific
+const container = document.getElementById("container"); 
+
+// 2. Using querySelector (The Swiss Army Knife)
+// selects by ID (needs #)
+const sameContainer = document.querySelector("#container"); 
+// selects by Class (needs .) - ONLY returns the FIRST 'p' ("Hello")
+const firstParagraph = document.querySelector(".text"); 
+
+// 3. querySelectorAll (To get ALL matches)
+const allParagraphs = document.querySelectorAll(".text");
+```
+
+#### Use Cases of selectors
+
+- Use getElementById:
+  - When you have a specific ID and you want the fastest possible performance (though the speed difference is negligible in modern browsers).
+  - When you want to be 100% sure you are getting a unique element.
+
+- Use querySelector:
+  - When you need to find an element by class, attribute (e.g., input[type="text"]), or complex relationship (e.g., "The span inside the div").
+  - When you want to write consistent code (using CSS syntax everywhere).
+
+#### Difference between selectors
+
+| Feature | getElementById | querySelector |
+| :--- | :--- | :--- |
+| **Speed** | **Advantage:** Extremely fast (optimized by browsers). | **Disadvantage:** Slightly slower (because it has to parse the CSS selector string). |
+| **Flexibility** | **Disadvantage:** Can ONLY find by ID. | **Advantage:** Can find by ID, Class, Tag, Attribute, or hierarchy (`div .class`). |
+| **Return Value** | Returns a single element. | Returns a single element (the first match). |
+| **Live vs Static** | Returns a live reference. | Returns a static reference. |
+
+---
+
+## 30. What is event and how to handle events in JavaScript?
+
+- **Event**: An "Event" is a signal that something has happened in the browser. It could be a user action (click, keypress) or a browser action (page load, error).
+- **Event Propagation**: The process of an event traveling through the DOM tree (the hierarchy of HTML elements) to reach its target and then traveling back.
+- **Event Bubbling**: The phase where the event starts at the target element (the most specific one) and "bubbles up" to the ancestors (parents, grandparents). This is the default behavior.
+- **Event Capturing (Trickling)**: The phase where the event goes down from the top of the window to the specific target element.
+
+### Explaination of event The "Office Hierarchy" Analogy
+
+Imagine a CEO (Window), a Manager (Parent Div), and a Worker (Button).
+
+- Event Handling: The Worker yells "I need help!" (The Click).
+- Event Capturing (Top-Down): The message travels down from the CEO -> Manager -> Worker. The CEO notices "Someone below me is yelling" before the Worker even knows the message arrived.
+- Event Bubbling (Bottom-Up): After the Worker handles it, the noise travels up. The Worker yells -> The Manager hears it -> The CEO hears it.
+
+In JavaScript, by default, we only listen to the "Bubbling" (the noise going up). If you click a button inside a Div, the Div also thinks it was clicked because the click "bubbles" up to it.3. Meaning of Hard Terminologies
+
+<details>
+<summary>Terminologies:</summary>
+
+- Listener (Handler): A function that sits and waits for a specific event to happen. When the event fires, the function runs.
+- stopPropagation(): A command to "Kill the bubble." It stops the event from traveling further up or down the chain. Use this if you want the Button to be clicked, but don't want the Parent Div to know about it.
+- target vs currentTarget:
+  - target: The actual element you clicked (The Button).
+  - currentTarget: The element that owns the listener (The Parent Div that caught the bubble).
+- preventDefault(): Stops the browser's default behavior. (e.g., Stops a form from submitting and refreshing the page, or stops a link from opening a URL).
+
+</details>
+
+```html
+<div id="parent" style="padding: 20px; background: grey;">
+  Parent
+  <button id="child">Child Button</button>
+</div>
+```
+
+```js
+const parent = document.getElementById("parent");
+const child = document.getElementById("child");
+
+// 1. Handling an Event (The Listener)
+child.addEventListener("click", function(event) {
+    console.log("Child Clicked!");
+    
+    // Optional: Uncomment to STOP bubbling
+    // event.stopPropagation(); 
 });
+
+// 2. Demonstrating Bubbling
+// If you click the BUTTON, this Parent listener runs too!
+parent.addEventListener("click", function() {
+    console.log("Parent Clicked (via Bubble)!");
+});
+
+// 3. Demonstrating Capturing (Rarely used)
+// Pass 'true' as the 3rd argument to catch it on the way DOWN
+parent.addEventListener("click", function() {
+    console.log("Parent Captured (Run First)!");
+}, true);
 ```
 
----
+### Use case of event
 
-## What is event bubbling? event capturing? event propagation?
+- Event Delegation (Best Bubbling Use Case): Instead of adding 100 listeners to 100 list items, you add one listener to the parent `<ul>`. Because of bubbling, clicks on any `<li>` will bubble up to the `<ul>`. You catch it there.
+- Analytics: Tracking clicks on the entire `<body>` to see where users interact most.
+- Modals/Popups: Detecting a click on the "background" (parent) to close the modal, while keeping clicks inside the "modal content" (child) active (using stopPropagation).
 
-- Capturing: Event moves from window -> document -> parent -> target.
-- Bubbling: Event moves from target -> parents -> document -> window.
-- Propagation: The overall travel path (capturing then bubbling). You can stop it with `event.stopPropagation()`.
+## 31. What is the difference between `map`, `filter`, and `reduce`?
 
-Use event delegation by listening on a parent and handling child events during bubbling.
+- **map()**: Creates a new array by applying a function to every element in the original array. It transforms data.
+- **filter()**: Creates a new array containing only the elements that pass a specific test (return true). It selects data.
+- **reduce()**: Reduces an array of values down to a single value (like a number, string, or object) by executing a reducer function on each element. It aggregates data.
 
----
+### Explanation of array methods
 
-## What is the difference between `map`, `filter`, and `reduce`?
+Think of a Chef processing a basket of raw potatoes.
 
-- `map`: Transforms each item, returns new array of same length.
-- `filter`: Keeps items that pass a condition, returns new array possibly shorter.
-- `reduce`: Combines items into a single value (number, object, array, etc.).
+- **map()** is Chopping: The chef takes every potato, peels and chops it.
+  - Input: 5 Whole Potatoes.
+  - Output: 5 Chopped Potatoes. (Same number of items, but changed).
 
-Example:
+- **filter()** is Inspecting: The chef checks each potato. If it's rotten, throw it away. If it's good, keep it.
+  - Input: 5 Potatoes.
+  - Output: 3 Good Potatoes. (Fewer items, but the items themselves are unchanged).
+
+- **reduce()** is Cooking (Mashing): The chef puts all the potatoes into a pot and mashes them together into one big bowl of mashed potatoes.
+  - Input: 5 Potatoes.
+  - Output: 1 Bowl of Mash. (Many things turned into one thing).
+
+<details>
+<summary>Terminologies:</summary>
+
+- Higher-Order Function: A function that takes another function as an input. map, filter, and reduce are all higher-order functions because you pass a callback function into them.
+- Immutability: Not changing the original data. All three of these methods return a new array (or value). The original array remains untouched (safe).
+- Accumulator (for reduce): The "storage variable" that gets passed along from one step to the next. It collects the result. (Like a snowball rolling down a hill, gathering more snow).
+
+</details>
 
 ```js
-const nums = [1, 2, 3, 4];
-const doubled = nums.map(n => n * 2); // [2, 4, 6, 8]
-const evens = nums.filter(n => n % 2 === 0); // [2, 4]
-const sum = nums.reduce((acc, n) => acc + n, 0); // 10
+const numbers = [10, 20, 30, 40];
+
+// 1. MAP: Double every number
+// "Take x, return x * 2"
+const doubled = numbers.map(num => num * 2);
+console.log(doubled); // Output: [20, 40, 60, 80] (Array of same length)
+
+// 2. FILTER: Keep only numbers > 25
+// "Take x, keep it if x > 25"
+const bigNumbers = numbers.filter(num => num > 25);
+console.log(bigNumbers); // Output: [30, 40] (Array of smaller length)
+
+// 3. REDUCE: Add them all up
+// "Start with 0 (acc). Add current number (curr) to it."
+const total = numbers.reduce((acc, curr) => {
+    return acc + curr;
+}, 0); // <- 0 is the initial value
+console.log(total); // Output: 100 (Single value)
 ```
+
+### Use Cases of array methods
+
+- map Use Cases:
+  - Converting a list of User Objects ({name, age}) into a simple list of names (['John', 'Jane']) to display in a dropdown.
+  - Converting temperatures from Celsius to Fahrenheit for a weather app.
+
+- filter Use Cases:
+  - Removing a deleted item from a list (e.g., "Keep all tasks where ID is NOT 5").
+  - Showing only "Active" users in an admin dashboard.
+
+- reduce Use Cases:
+  - Calculating the Total Price of items in a shopping cart.
+  - Flattening a nested array (turning [[1,2], [3,4]] into [1,2,3,4]).
+  - Counting how many times a specific word appears in a paragraph.
 
 ---
 
-## What is destructuring?
+## 32. What is destructuring?
 
 Short syntax to pull values from arrays/objects into variables.
 
@@ -691,20 +1140,76 @@ const [first, , third] = nums; // first = 10, third = 30
 
 ---
 
-## What is `this` keyword? and its different contexts?
+## 33. What is `this` keyword? and its different contexts?
 
-`this` refers to the current execution context.
+The this keyword in JavaScript refers to the object that is currently executing the function. Its value is dynamic—it is determined at the moment the function is called (runtime), not when the function is written.
 
-- Global (non-strict): `this` is `window`/`globalThis`.
-- In a method call: `this` is the object before the dot.
-- In event handlers: `this` is the element (unless an arrow function is used).
-- In functions (strict mode): `this` is `undefined` if not bound.
-- In arrow functions: `this` is taken from the surrounding scope; it does not bind its own.
-- With `call/apply/bind`: You can set `this` manually.
+### Explanatin of `this`
+
+Think of this like the word "My" or "Me" in English.
+
+- If I (Gemini) say, "My name is Gemini," the word "My" refers to Gemini.
+- If You (The User) say, "My name is User," the word "My" refers to You.
+
+The word is exactly the same ("My"), but who it points to changes depending on who is speaking. In JavaScript:
+
+- If a function belongs to an object (e.g., user.speak()), this refers to the user.
+- If a function stands alone, this gets confused and usually refers to the "Global World" (Window).
+
+<details>
+<summary>Terminologies:</summary>
+
+- Execution Context:: The environment where the code is running. Is it running inside a function? Or just out in the open? this changes based on this environment.
+- Implicit Binding: The standard way JS figures out this. It looks at what is to the left of the dot (e.g., in obj.func(), obj is the this).
+- Explicit Binding: Forcing a function to use a specific object as this using tools like .call(), .apply(), or .bind().
+- Lexical Scoping (Arrow Functions): Arrow functions (=>) are special. They don't have their own this. They "steal" the this from their parent.
+
+</details>
+
+```js
+// 1. Global Context (Alone)
+console.log(this); // Refers to Window (Browser)
+
+// 2. Object Method (Implicit)
+const person = {
+    name: "John",
+    greet: function() {
+        // 'this' refers to 'person' because person called the function
+        console.log("Hi, I am " + this.name); 
+    }
+};
+person.greet(); // Output: Hi, I am John
+
+// 3. Arrow Function (Lexical - The Trap!)
+const arrowPerson = {
+    name: "Jane",
+    greet: () => {
+        // Arrow functions DON'T own 'this'. They look up to the Window.
+        console.log("Hi, I am " + this.name); 
+    }
+};
+arrowPerson.greet(); // Output: Hi, I am undefined (or Window name)
+
+// 4. Constructor (New Keyword)
+function Car(model) {
+    this.model = model; // 'this' refers to the NEW object being created
+}
+const myCar = new Car("Tesla");
+```
+
+### Rules to determine value of `this`
+
+| Context | Rule (How it is called) | Value of `this` |
+| :--- | :--- | :--- |
+| **Default Binding** | `myFunction()` (Standalone) | Global Window object (or `undefined` in Strict Mode). |
+| **Implicit Binding** | `user.myFunction()` (Dot Notation) | The object before the dot (`user`). |
+| **Explicit Binding** | `myFunction.call(user)` | The object you manually passed (`user`). |
+| **New Binding** | `new myFunction()` | A brand new empty object created by the constructor. |
+| **Arrow Functions** | `() => {}` | The `this` of the surrounding code (Parent scope). |
 
 ---
 
-## What are comments?
+## 34. What are comments?
 
 - Single-line: `// text`
 - Multi-line: `/* text */`
@@ -713,7 +1218,7 @@ Use comments to explain why, not to restate obvious code.
 
 ---
 
-## Can we use JavaScript for backend development? How?
+## 35. Can we use JavaScript for backend development? How?
 
 Yes, with Node.js (runs JS outside the browser).
 
@@ -722,7 +1227,7 @@ Yes, with Node.js (runs JS outside the browser).
 
 ---
 
-## What are different types of loops?
+## 36. What are different types of loops?
 
 - `for` (classic counter)
 - `while`
